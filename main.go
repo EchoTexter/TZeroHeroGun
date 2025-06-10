@@ -8,7 +8,8 @@ import (
 
 func setGun() {
 	// TODO: figure out the right math for this
-	t0Delay := rand.IntN(31) + 40
+
+	t0Delay := rand.IntN(31) + 40 // second from now to t0
 	getSetDelay := t0Delay - rand.IntN(5) - 1
 	onYourMarksDelay := getSetDelay - rand.IntN(10) - 15
 
@@ -21,17 +22,21 @@ func setGun() {
 	getSetString := getSet.Format(time.RFC3339)
 	onYourMarksString := onYourMarks.Format(time.RFC3339)
 
-	fmt.Printf("On your marks  %s\n", onYourMarksString)
-	fmt.Printf("Set %s\n", getSetString)
-	fmt.Printf("Gun!! %s\n", t0String)
+	waitOnYourMarks := time.Until(onYourMarks)
+	time.Sleep(waitOnYourMarks)
+	fmt.Printf("On your marks  %s, %s\n", onYourMarksString, time.Now().Format(time.RFC3339))
+
+	waitGetSet := time.Until(getSet)
+	time.Sleep(waitGetSet)
+	fmt.Printf("Get Set %s, %s\n", getSetString, time.Now().Format(time.RFC3339))
+
+	waitT0 := time.Until(t0)
+	time.Sleep(waitT0)
+	fmt.Printf("Gun!! %s, %s \n", t0String, time.Now().Format(time.RFC3339))
 }
 
 func main() {
-	now := time.Now()
-
-	nowFormated := now.Format(time.RFC3339)
-
 	fmt.Println("Hello World!\n")
-	fmt.Printf("Time now\n", nowFormated)
+
 	setGun()
 }
