@@ -7,6 +7,8 @@ to settle on `t0` (gun). Once it's defined it calculates `t -1` (set) and
 `t -2` (on your marks). 
 
 ###
-´´´
-ssh -o PreferredAuthentications=password  cuau@192.168.1.93
-´´´
+`ssh -o PreferredAuthentications=password  cuau@192.168.1.93`
+
+
+Service UUID `fb7f3ba1-93ab-4eed-9e5f-6197aead8e07`
+Characteristic UUID `e4eaaaf2-347d-4f5e-b3f3-8f6e491f3a11`

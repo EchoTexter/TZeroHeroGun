@@ -1,10 +1,72 @@
 package main
 
 import (
+	"context"
+	"encoding/hex"
 	"fmt"
+	"log"
 	"math/rand/v2"
 	"time"
+
+	"github.com/go-ble/ble"
+	"github.com/go-ble/ble/linux"
 )
+
+func isPrintable(s string) bool {
+	for _, r := range s {
+		if r < 32 || r > 123 {
+			return false
+		}
+	}
+	return true
+}
+
+func bluetooth() {
+	dev, err := linux.NewDevice()
+	if err != nil {
+		log.Fatalf("Failed to init BLE device: %v", err)
+	}
+
+	ble.SetDefaultDevice(dev)
+
+	srvcUUID := ble.MustParse("fb7f3ba1-93ab-4eed-9e5f-6197aead8e07")
+	charUUID := ble.MustParse("8c12eedc-9270-424e-9fc7-0dd09a9d13ec")
+
+	service := ble.NewService(srvcUUID)
+
+	// time stamp char
+	tsChar := ble.NewCharacteristic(charUUID)
+	tsChar.HandleWrite(ble.WriteHandlerFunc(func(req ble.Request, rsp ble.ResponseWriter) {
+		data := req.Data()
+
+		log.Printf("Received %d bytes: %s", len(data), hex.EncodeToString(data))
+		if s := string(data); isPrintable(s) {
+			log.Printf("As string %q", s)
+		}
+	}))
+
+	service.AddCharacteristic(tsChar)
+	ble.AddService(service)
+
+	ctx := ble.WithSigHandler(context.Background(), func() {
+		log.Println("Signal received --- stopping advertisement")
+		dev.Stop()
+	})
+
+	go func() {
+		for {
+			err := ble.AdvertiseNameAndServices(ctx, "TZeroHero", srvcUUID)
+			if err != nil {
+				log.Printf("Advertise error: %v", err)
+			}
+			time.Sleep(1 * time.Second)
+
+		}
+	}()
+
+	<-ctx.Done()
+	log.Println("exiting")
+}
 
 func setGun() {
 	// TODO: figure out the right math for this
@@ -36,7 +98,6 @@ func setGun() {
 }
 
 func main() {
-	fmt.Println("Hello World!\n")
-
 	setGun()
+	bluetooth()
 }
