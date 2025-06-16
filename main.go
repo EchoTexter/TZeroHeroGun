@@ -7,6 +7,7 @@ import (
 	"log"
 	"math/rand/v2"
 	"time"
+	"os/exec"
 
 	"github.com/go-ble/ble"
 	"github.com/go-ble/ble/linux"
@@ -68,6 +69,19 @@ func bluetooth() {
 	log.Println("exiting")
 }
 
+func playAudio(filePath string, expectedTimeStamp string) {
+
+	play := func() error {
+		fmt.Printf("Action expected time  %s, actual time %s\n", expectedTimeStamp, time.Now().Format(time.RFC3339Nano))
+		cmd := exec.Command("aplay", filePath)
+		return cmd.Run()
+	}
+
+	if err := play() ; err != nil {
+		log.Fatalf("Failed to play %s: %v, at %s", filePath, err, expectedTimeStamp)
+	}
+}
+
 func setGun() {
 	// TODO: figure out the right math for this
 
@@ -80,21 +94,24 @@ func setGun() {
 	getSet := now.Add(time.Duration(getSetDelay) * time.Second)
 	onYourMarks := now.Add(time.Duration(onYourMarksDelay) * time.Second)
 
-	t0String := t0.Format(time.RFC3339)
-	getSetString := getSet.Format(time.RFC3339)
-	onYourMarksString := onYourMarks.Format(time.RFC3339)
+	t0String := t0.Format(time.RFC3339Nano)
+	getSetString := getSet.Format(time.RFC3339Nano)
+	onYourMarksString := onYourMarks.Format(time.RFC3339Nano)
 
 	waitOnYourMarks := time.Until(onYourMarks)
 	time.Sleep(waitOnYourMarks)
-	fmt.Printf("On your marks  %s, %s\n", onYourMarksString, time.Now().Format(time.RFC3339))
+	playAudio("./audios/onYourMarks.wav", onYourMarksString)
+	//fmt.Printf("On your marks  %s, %s\n", onYourMarksString, time.Now().Format(time.RFC3339))
 
 	waitGetSet := time.Until(getSet)
 	time.Sleep(waitGetSet)
-	fmt.Printf("Get Set %s, %s\n", getSetString, time.Now().Format(time.RFC3339))
+	playAudio("./audios/getSet.wav", getSetString)
+	//fmt.Printf("Get Set %s, %s\n", getSetString, time.Now().Format(time.RFC3339))
 
 	waitT0 := time.Until(t0)
 	time.Sleep(waitT0)
-	fmt.Printf("Gun!! %s, %s \n", t0String, time.Now().Format(time.RFC3339))
+	playAudio("./audios/gun.wav", t0String)
+	//fmt.Printf("Gun!! %s, %s \n", t0String, time.Now().Format(time.RFC3339))
 }
 
 func main() {
