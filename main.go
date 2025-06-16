@@ -70,8 +70,14 @@ func bluetooth() {
 }
 
 func playAudio(filePath string, expectedTimeStamp string) {
-	cmd := exec.Command("aplay", filePath)
-	if err := cmd.Run() ; err != nil {
+
+	play := func() error {
+		fmt.Printf("Action expected time  %s, actual time %s\n", expectedTimeStamp, time.Now().Format(time.RFC3339Nano))
+		cmd := exec.Command("aplay", filePath)
+		return cmd.Run()
+	}
+
+	if err := play() ; err != nil {
 		log.Fatalf("Failed to play %s: %v, at %s", filePath, err, expectedTimeStamp)
 	}
 }
@@ -88,9 +94,9 @@ func setGun() {
 	getSet := now.Add(time.Duration(getSetDelay) * time.Second)
 	onYourMarks := now.Add(time.Duration(onYourMarksDelay) * time.Second)
 
-	t0String := t0.Format(time.RFC3339)
-	getSetString := getSet.Format(time.RFC3339)
-	onYourMarksString := onYourMarks.Format(time.RFC3339)
+	t0String := t0.Format(time.RFC3339Nano)
+	getSetString := getSet.Format(time.RFC3339Nano)
+	onYourMarksString := onYourMarks.Format(time.RFC3339Nano)
 
 	waitOnYourMarks := time.Until(onYourMarks)
 	time.Sleep(waitOnYourMarks)
@@ -109,7 +115,6 @@ func setGun() {
 }
 
 func main() {
-	fmt.Printf("Empezando")
 	setGun()
 	bluetooth()
 }
