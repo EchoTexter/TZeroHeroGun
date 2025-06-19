@@ -26,3 +26,10 @@ mean: 25.527203ms
 median: 50.691µs
 min: 0s
 max: 267.75235ms
+
+#### Optimized approach 
+
+mean: 74.865236ms
+median: 73.555µs
+min: 0s
+max: 14.297293289s
