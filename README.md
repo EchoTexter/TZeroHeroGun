@@ -21,15 +21,17 @@ Characteristic UUID `e4eaaaf2-347d-4f5e-b3f3-8f6e491f3a11`
 ### Simple benchmarks
 
 #### Standard approach
-
+```
 mean: 25.527203ms
 median: 50.691µs
 min: 0s
 max: 267.75235ms
+```
 
 #### Optimized approach 
-
-mean: 74.865236ms
-median: 73.555µs
+```
+mean: 534.001µs
+median: 59.124µs
 min: 0s
-max: 14.297293289s
+max: 5.036333ms
+```
