@@ -1,17 +1,30 @@
 package main
 
 import (
+	"bytes"
 	"context"
+	"encoding/binary"
 	"encoding/hex"
 	"fmt"
 	"log"
 	"math/rand/v2"
-	"time"
+	"os"
 	"os/exec"
+	"time"
 
 	"github.com/go-ble/ble"
 	"github.com/go-ble/ble/linux"
+
+	"github.com/go-audio/wav"
+	"github.com/hajimehoshi/oto/v2"
 )
+
+type Cue struct {
+	name       string
+	pcm        []byte
+	sampleRate int
+	numChans   int
+}
 
 func isPrintable(s string) bool {
 	for _, r := range s {
@@ -77,9 +90,38 @@ func playAudio(filePath string, expectedTimeStamp string) {
 		return cmd.Run()
 	}
 
-	if err := play() ; err != nil {
+	if err := play(); err != nil {
 		log.Fatalf("Failed to play %s: %v, at %s", filePath, err, expectedTimeStamp)
 	}
+}
+
+func loadWAV(filePath string) ([]byte, int, int, error) {
+	f, err := os.Open(filePath)
+
+	if err != nil {
+		return nil, 0, 0, err
+	}
+
+	defer f.Close()
+
+	dec := wav.NewDecoder(f)
+	if !dec.IsValidFile() {
+		return nil, 0, 0, fmt.Errorf("invalid WAV file: %s", filePath)
+	}
+
+	buf, err := dec.FullPCMBuffer()
+	if err != nil {
+		return nil, 0, 0, err
+	}
+
+	pcmBuf := &bytes.Buffer{}
+	for _, sample := range buf.Data {
+		if err := binary.Write(pcmBuf, binary.LittleEndian, int16(sample)); err != nil {
+			return nil, 0, 0, err
+		}
+	}
+
+	return pcmBuf.Bytes(), int(dec.SampleRate), int(dec.NumChans), nil
 }
 
 func setGun() {
@@ -94,9 +136,64 @@ func setGun() {
 	getSet := now.Add(time.Duration(getSetDelay) * time.Second)
 	onYourMarks := now.Add(time.Duration(onYourMarksDelay) * time.Second)
 
+	files := []string{"onYourMarks.wav", "getSet.wav", "gun.wav"}
+	cues := make([]Cue, len(files))
+
+	for i, fn := range files {
+		pcm, sr, ch, err := loadWAV("./audios/" + fn)
+		if err != nil {
+			log.Fatalf("load %s: %v", fn, err)
+		}
+		cues[i] = Cue{name: fn, pcm: pcm, sampleRate: sr, numChans: ch}
+	}
+
+	ctx, ready, err := oto.NewContext(
+		cues[0].sampleRate,
+		cues[0].numChans,
+		2,
+	)
+
+	if err != nil {
+		log.Fatalf("auido init: %v", err)
+	}
+	<-ready
+
+	schedule := []struct {
+		cue  Cue
+		when time.Time
+	}{
+		{cues[0], onYourMarks},
+		{cues[1], getSet},
+		{cues[2], t0},
+	}
+
+	for _, item := range schedule {
+		c := item.cue
+		exp := item.when
+		log.Printf("Scheduled %-15s at %s\n", c.name, exp.Format(time.RFC3339Nano))
+		time.AfterFunc(time.Until(exp), func() {
+			now := time.Now()
+			log.Printf(
+				"→ %-15s | Exp: %s | Act: %s | Δ: %v\n",
+				c.name,
+				exp.Format(time.RFC3339Nano),
+				now.Format(time.RFC3339Nano),
+				now.Sub(exp),
+			)
+			reader := bytes.NewReader(c.pcm)
+			player := ctx.NewPlayer(reader)
+			player.Play()
+		})
+	}
+
+	runtime := schedule[len(schedule)-1].when.Sub(time.Now()) + time.Second
+	time.Sleep(runtime)
+
+	/* Old Method
 	t0String := t0.Format(time.RFC3339Nano)
 	getSetString := getSet.Format(time.RFC3339Nano)
 	onYourMarksString := onYourMarks.Format(time.RFC3339Nano)
+
 
 	waitOnYourMarks := time.Until(onYourMarks)
 	time.Sleep(waitOnYourMarks)
@@ -112,6 +209,7 @@ func setGun() {
 	time.Sleep(waitT0)
 	playAudio("./audios/gun.wav", t0String)
 	//fmt.Printf("Gun!! %s, %s \n", t0String, time.Now().Format(time.RFC3339))
+	*/
 }
 
 func main() {
