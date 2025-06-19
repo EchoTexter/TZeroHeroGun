@@ -2,18 +2,14 @@ package main
 
 import (
 	"bytes"
-	"context"
 	"encoding/binary"
-	"encoding/hex"
 	"fmt"
 	"log"
 	"math/rand/v2"
 	"os"
 	"os/exec"
+	"sort"
 	"time"
-
-	"github.com/go-ble/ble"
-	"github.com/go-ble/ble/linux"
 
 	"github.com/go-audio/wav"
 	"github.com/hajimehoshi/oto/v2"
@@ -26,6 +22,12 @@ type Cue struct {
 	numChans   int
 }
 
+var (
+	deltaCh   = make(chan time.Duration, 100)
+	gunDeltas = make([]time.Duration, 100)
+)
+
+/*
 func isPrintable(s string) bool {
 	for _, r := range s {
 		if r < 32 || r > 123 {
@@ -34,7 +36,9 @@ func isPrintable(s string) bool {
 	}
 	return true
 }
+*/
 
+/*
 func bluetooth() {
 	dev, err := linux.NewDevice()
 	if err != nil {
@@ -81,6 +85,7 @@ func bluetooth() {
 	<-ctx.Done()
 	log.Println("exiting")
 }
+*/
 
 func playAudio(filePath string, expectedTimeStamp string) {
 
@@ -127,9 +132,9 @@ func loadWAV(filePath string) ([]byte, int, int, error) {
 func setGun() {
 	// TODO: figure out the right math for this
 
-	t0Delay := rand.IntN(31) + 40 // second from now to t0
-	getSetDelay := t0Delay - rand.IntN(5) - 1
-	onYourMarksDelay := getSetDelay - rand.IntN(10) - 15
+	t0Delay := rand.IntN(6) + 20 // second from now to t0
+	getSetDelay := t0Delay - rand.IntN(3) - 1
+	onYourMarksDelay := getSetDelay - rand.IntN(5) - 10
 
 	now := time.Now()
 	t0 := now.Add(time.Duration(t0Delay) * time.Second)
@@ -172,17 +177,21 @@ func setGun() {
 		exp := item.when
 		log.Printf("Scheduled %-15s at %s\n", c.name, exp.Format(time.RFC3339Nano))
 		time.AfterFunc(time.Until(exp), func() {
+			reader := bytes.NewReader(c.pcm)
+			player := ctx.NewPlayer(reader)
 			now := time.Now()
+			delta := now.Sub(exp)
+			player.Play()
 			log.Printf(
 				"→ %-15s | Exp: %s | Act: %s | Δ: %v\n",
 				c.name,
 				exp.Format(time.RFC3339Nano),
 				now.Format(time.RFC3339Nano),
-				now.Sub(exp),
+				delta,
 			)
-			reader := bytes.NewReader(c.pcm)
-			player := ctx.NewPlayer(reader)
-			player.Play()
+			if c.name == "gun.wav" {
+				deltaCh <- delta
+			}
 		})
 	}
 
@@ -213,6 +222,23 @@ func setGun() {
 }
 
 func main() {
-	setGun()
-	bluetooth()
+	for i := 0; i < 100; i++ {
+		go setGun()
+		d := <-deltaCh
+		gunDeltas = append(gunDeltas, d)
+		time.Sleep(200 * time.Millisecond)
+		fmt.Printf("Trial %d", i)
+	}
+
+	sort.Slice(gunDeltas, func(i, j int) bool { return gunDeltas[i] < gunDeltas[j] })
+	var sum time.Duration
+	for _, d := range gunDeltas {
+		sum += d
+	}
+	mean := sum / time.Duration(len(gunDeltas))
+	median := gunDeltas[len(gunDeltas)/2]
+	min, max := gunDeltas[0], gunDeltas[len(gunDeltas)-1]
+
+	fmt.Printf("runs: %d\nmean: %v\nmedian: %v\nmin: %v\nmax: %v\n", len(gunDeltas), mean, median, min, max)
+	//bluetooth()
 }
