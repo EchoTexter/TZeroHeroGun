@@ -18,6 +18,14 @@ Characteristic UUID `e4eaaaf2-347d-4f5e-b3f3-8f6e491f3a11`
 - `go build -o tzeroherogun main.go`
 - `sudo setcap 'cap_net_raw,cap_net_admin+eip' ./tzeroherogun`
 
+```
+export GOARCH=arm64
+export CGO_ENABLED=1
+go clean -cache
+go build -o tzeroherogun main.go
+
+```
+
 ### Simple benchmarks
 
 #### Standard approach

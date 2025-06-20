@@ -128,15 +128,16 @@ func setGun() {
 	// TODO: figure out the right math for this
 
 	t0Delay := rand.IntN(31) + 40 // second from now to t0
-	getSetDelay := t0Delay - rand.IntN(5) - 1
+	getSetDelay := t0Delay - rand.IntN(5) - 2
 	onYourMarksDelay := getSetDelay - rand.IntN(10) - 15
 
 	now := time.Now()
 	t0 := now.Add(time.Duration(t0Delay) * time.Second)
 	getSet := now.Add(time.Duration(getSetDelay) * time.Second)
 	onYourMarks := now.Add(time.Duration(onYourMarksDelay) * time.Second)
+	warmUp := now.Add(3 * time.Second)
 
-	files := []string{"onYourMarks.wav", "getSet.wav", "gun.wav"}
+	files := []string{"onYourMarks.wav", "onYourMarks.wav", "getSet.wav", "gun.wav"}
 	cues := make([]Cue, len(files))
 
 	for i, fn := range files {
@@ -162,9 +163,10 @@ func setGun() {
 		cue  Cue
 		when time.Time
 	}{
-		{cues[0], onYourMarks},
-		{cues[1], getSet},
-		{cues[2], t0},
+		{cues[0], warmUp},
+		{cues[1], onYourMarks},
+		{cues[2], getSet},
+		{cues[3], t0},
 	}
 
 	for _, item := range schedule {
@@ -181,35 +183,16 @@ func setGun() {
 				now.Sub(exp),
 			)
 			reader := bytes.NewReader(c.pcm)
-			player := ctx.NewPlayer(reader)
-			player.Play()
+			go func() {
+				player := ctx.NewPlayer(reader)
+				player.Play()
+				time.Sleep(time.Duration(len(c.pcm)) * time.Second / time.Duration(c.sampleRate*c.numChans*2))
+			}()
 		})
 	}
 
 	runtime := schedule[len(schedule)-1].when.Sub(time.Now()) + time.Second
 	time.Sleep(runtime)
-
-	/* Old Method
-	t0String := t0.Format(time.RFC3339Nano)
-	getSetString := getSet.Format(time.RFC3339Nano)
-	onYourMarksString := onYourMarks.Format(time.RFC3339Nano)
-
-
-	waitOnYourMarks := time.Until(onYourMarks)
-	time.Sleep(waitOnYourMarks)
-	playAudio("./audios/onYourMarks.wav", onYourMarksString)
-	//fmt.Printf("On your marks  %s, %s\n", onYourMarksString, time.Now().Format(time.RFC3339))
-
-	waitGetSet := time.Until(getSet)
-	time.Sleep(waitGetSet)
-	playAudio("./audios/getSet.wav", getSetString)
-	//fmt.Printf("Get Set %s, %s\n", getSetString, time.Now().Format(time.RFC3339))
-
-	waitT0 := time.Until(t0)
-	time.Sleep(waitT0)
-	playAudio("./audios/gun.wav", t0String)
-	//fmt.Printf("Gun!! %s, %s \n", t0String, time.Now().Format(time.RFC3339))
-	*/
 }
 
 func main() {
