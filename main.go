@@ -183,11 +183,8 @@ func setGun() {
 				now.Sub(exp),
 			)
 			reader := bytes.NewReader(c.pcm)
-			go func() {
-				player := ctx.NewPlayer(reader)
-				player.Play()
-				time.Sleep(time.Duration(len(c.pcm)) * time.Second / time.Duration(c.sampleRate*c.numChans*2))
-			}()
+			player := ctx.NewPlayer(reader)
+			player.Play()
 		})
 	}
 
