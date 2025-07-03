@@ -26,6 +26,8 @@ go build -o tzeroherogun main.go
 
 ```
 
+Use `alsamixer` to turn volume up/down
+
 ### Simple benchmarks
 
 #### Standard approach
